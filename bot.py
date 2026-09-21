@@ -32,7 +32,7 @@ import database as db
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN))
+bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher()
 router = Router()
 
@@ -57,11 +57,11 @@ async def send_message(target_id: int, text: str, gif_url: Optional[str] = None,
     try:
         if gif_url:
             try:
-                await bot.send_animation(target_id, animation=gif_url, caption=text, parse_mode=ParseMode.MARKDOWN)
+                await bot.send_animation(target_id, animation=gif_url, caption=text)
             except TelegramBadRequest:
-                await bot.send_message(target_id, text, parse_mode=ParseMode.MARKDOWN)
+                await bot.send_message(target_id, text)
         else:
-            await bot.send_message(target_id, text, parse_mode=ParseMode.MARKDOWN, reply_markup=None)
+            await bot.send_message(target_id, text, reply_markup=None)
     except Exception as e:
         logger.error(f"Failed to send message to {target_id}: {e}")
 
@@ -78,18 +78,17 @@ async def send_target_keyboard(user_id: int, text: str, targetable: dict[int, Pl
     buttons = []
     row = []
     for uid, ps in targetable.items():
-        emoji = get_role_emoji(ps.role.name) if ps.role.name != "town" else "👤"
         row.append(InlineKeyboardButton(text=f"{ps.display_name}", callback_data=f"target:{uid}"))
         if len(row) == 2:
             buttons.append(row)
             row = []
     if row:
         buttons.append(row)
-    buttons.append([InlineKeyboardButton(text="⏭️ Пропустить", callback_data="target:none")])
+    buttons.append([InlineKeyboardButton(text="Skip", callback_data="target:none")])
 
     markup = InlineKeyboardMarkup(inline_keyboard=buttons)
     try:
-        await bot.send_message(user_id, text, reply_markup=markup, parse_mode=ParseMode.MARKDOWN)
+        await bot.send_message(user_id, text, reply_markup=markup)
     except Exception as e:
         logger.error(f"Failed to send keyboard to {user_id}: {e}")
 
@@ -99,46 +98,44 @@ async def send_target_keyboard(user_id: int, text: str, targetable: dict[int, Pl
 @router.message(CommandStart())
 async def cmd_start(message: Message):
     user_id = message.from_user.id
-    name = message.from_user.first_name or "Игрок"
+    name = message.from_user.first_name or "Player"
     db.save_player(user_id, name)
     await message.answer(
-        f"👋 Привет, **{name}**!\n\n"
-        "Я — бот для игры в **Мафию** 🎭\n\n"
-        "Команды:\n"
-        "/newgame — создать игру\n"
-        "/join — присоединиться\n"
-        "/leave — выйти\n"
-        "/start_game — начать игру\n"
-        "/profile — твой профиль\n"
-        "/stats — топ игроков\n"
-        "/rules — правила\n",
-        parse_mode=ParseMode.MARKDOWN,
+        f"Hello, <b>{name}</b>!\n\n"
+        "I'm a <b>Mafia</b> bot.\n\n"
+        "Commands:\n"
+        "/newgame - create game\n"
+        "/join - join game\n"
+        "/leave - leave game\n"
+        "/start_game - start game\n"
+        "/profile - your profile\n"
+        "/stats - top players\n"
+        "/rules - rules\n",
     )
 
 
 @router.message(Command("rules"))
 async def cmd_rules(message: Message):
     await message.answer(
-        "📜 **ПРАВИЛА МАФИИ**\n\n"
-        "**Ночь:** 🌙\n"
-        "• Мафия выбирает жертву\n"
-        "• Шериф проверяет одного игрока\n"
-        "• Доктор спасает одного игрока\n"
-        "• Провидец узнаёт роль\n"
-        "• Маньяк может убить (1 раз)\n"
-        "• Бармен подменяет роль (на ночь)\n"
-        "• Купец покупает предметы\n\n"
-        "**День:** ☀️\n"
-        "• Обсуждение и голосование\n"
-        "• Кто наберёт больше голосов — казнён\n\n"
-        "**Победа:**\n"
-        "• Мирные: мафия = 0\n"
-        "• Мафия: мафия ≥ мирные\n\n"
-        "**Особые роли:**\n"
-        "💣 Камикадзе — взрывается при убийстве\n"
-        "💰 Купец — зарабатывает монеты\n"
-        "🍸 Бармен — подменяет роли\n",
-        parse_mode=ParseMode.MARKDOWN,
+        "<b>Mafia Rules</b>\n\n"
+        "<b>Night:</b>\n"
+        "- Mafia picks a target\n"
+        "- Sheriff checks a player\n"
+        "- Doctor saves a player\n"
+        "- Seer sees a role\n"
+        "- Maniac can kill (once)\n"
+        "- Bartender swaps role (one night)\n"
+        "- Merchant buys items\n\n"
+        "<b>Day:</b>\n"
+        "- Discussion and voting\n"
+        "- Most votes = execution\n\n"
+        "<b>Win:</b>\n"
+        "- Town: mafia = 0\n"
+        "- Mafia: mafia >= town\n\n"
+        "<b>Special roles:</b>\n"
+        "Kamikaze - explodes when killed\n"
+        "Merchant - earns coins\n"
+        "Bartender - swaps roles\n",
     )
 
 
@@ -150,7 +147,7 @@ async def cmd_newgame(message: Message):
     if chat_id in chat_game:
         existing = games.get(chat_game[chat_id])
         if existing and existing.phase == GamePhase.LOBBY:
-            await message.answer("❌ Игра уже создаётся! /join чтобы присоединиться.")
+            await message.answer("Game already exists! /join to join.")
             return
 
     game_id = generate_game_id()
@@ -160,19 +157,18 @@ async def cmd_newgame(message: Message):
         creator_id=user_id,
         message_sender=send_message,
     )
-    game.add_player(user_id, message.from_user.first_name or "Игрок")
+    game.add_player(user_id, message.from_user.first_name or "Player")
     games[game_id] = game
     user_game[user_id] = game_id
     chat_game[chat_id] = game_id
 
     await message.answer(
-        f"🎭 **НОВАЯ ИГРА СОЗДАНА!**\n\n"
-        f"ID: `{game_id}`\n"
-        f"Создатель: {message.from_user.first_name}\n\n"
-        f"Ждём игроков! Минимум {MIN_PLAYERS}.\n"
-        f"/join — присоединиться\n"
-        f"/start_game — начать",
-        parse_mode=ParseMode.MARKDOWN,
+        f"<b>NEW GAME CREATED!</b>\n\n"
+        f"ID: <code>{game_id}</code>\n"
+        f"Creator: {message.from_user.first_name}\n\n"
+        f"Waiting for players! Minimum {MIN_PLAYERS}.\n"
+        f"/join - join\n"
+        f"/start_game - start",
     )
 
 
@@ -180,32 +176,33 @@ async def cmd_newgame(message: Message):
 async def cmd_join(message: Message):
     user_id = message.from_user.id
     chat_id = message.chat.id
-    name = message.from_user.first_name or "Игрок"
+    name = message.from_user.first_name or "Player"
 
     if chat_id not in chat_game:
-        await message.answer("❌ Нет активной игры. Создай: /newgame")
+        await message.answer("No active game. Create: /newgame")
         return
 
     game_id = chat_game[chat_id]
     game = games.get(game_id)
     if not game or game.phase != GamePhase.LOBBY:
-        await message.answer("❌ Игра уже началась или не найдена.")
+        await message.answer("Game already started or not found.")
         return
 
     if user_id in game.players:
-        await message.answer("❌ Ты уже в игре!")
+        await message.answer("You are already in the game!")
         return
 
     if not game.add_player(user_id, name):
-        await message.answer("❌ Лobby полное (макс. 16).")
+        await message.answer("Lobby full (max 16).")
         return
 
     user_game[user_id] = game_id
+    lobby_text = format_lobby(game.lobby_order, {uid: game.players[uid].display_name for uid in game.players})
+    lobby_text = lobby_text.replace("**", "")
     await message.answer(
-        f"✅ **{name}** присоединился!\n\n"
-        f"{format_lobby(game.lobby_order, {uid: game.players[uid].display_name for uid in game.players})}\n\n"
-        f"/join — ещё игрок\n/start_game — начать",
-        parse_mode=ParseMode.MARKDOWN,
+        f"<b>{name}</b> joined!\n\n"
+        f"{lobby_text}\n\n"
+        f"/join - more players\n/start_game - start",
     )
 
 
@@ -215,29 +212,28 @@ async def cmd_leave(message: Message):
     chat_id = message.chat.id
 
     if chat_id not in chat_game:
-        await message.answer("❌ Ты не в игре.")
+        await message.answer("You are not in a game.")
         return
 
     game_id = chat_game[chat_id]
     game = games.get(game_id)
     if not game or game.phase != GamePhase.LOBBY:
-        await message.answer("❌ Игра уже началась.")
+        await message.answer("Game already started.")
         return
 
     if user_id not in game.players:
-        await message.answer("❌ Ты не в игре.")
+        await message.answer("You are not in the game.")
         return
 
     if user_id == game.creator_id:
-        await message.answer("❌ Создатель не может выйти. Используй /cancel.")
+        await message.answer("Creator cannot leave. Use /cancel.")
         return
 
     game.remove_player(user_id)
     user_game.pop(user_id, None)
     await message.answer(
-        f"👋 {message.from_user.first_name} вышел из игры.\n"
-        f"Игроков: {len(game.players)}",
-        parse_mode=ParseMode.MARKDOWN,
+        f"{message.from_user.first_name} left the game.\n"
+        f"Players: {len(game.players)}",
     )
 
 
@@ -247,47 +243,47 @@ async def cmd_start_game(message: Message):
     chat_id = message.chat.id
 
     if chat_id not in chat_game:
-        await message.answer("❌ Нет активной игры.")
+        await message.answer("No active game.")
         return
 
     game_id = chat_game[chat_id]
     game = games.get(game_id)
     if not game or game.phase != GamePhase.LOBBY:
-        await message.answer("❌ Игра уже началась.")
+        await message.answer("Game already started.")
         return
 
     if user_id != game.creator_id:
-        await message.answer("❌ Только создатель может начать игру.")
+        await message.answer("Only the creator can start the game.")
         return
 
     if len(game.players) < MIN_PLAYERS:
-        await message.answer(f"❌ Нужно минимум {MIN_PLAYERS} игроков!")
+        await message.answer(f"Need at least {MIN_PLAYERS} players!")
         return
 
     if not game.start_game():
-        await message.answer("❌ Не удалось начать игру.")
+        await message.answer("Failed to start game.")
         return
 
     await message.answer(
-        "🎭 **ИГРА НАЧИНАЕТСЯ!**\n\n"
-        "Роли розданы. Проверьте ЛС!\n\n"
-        "🌙 Наступает **НОЧЬ**...\n"
-        "Все **МОЛЧИТЕ** — голосование ночью запрещено!\n",
-        parse_mode=ParseMode.MARKDOWN,
+        "<b>GAME STARTS!</b>\n\n"
+        "Roles have been dealt. Check your DMs!\n\n"
+        "Night is falling...\n"
+        "Everyone be QUIET - talking at night is forbidden!\n",
         reply_markup=None,
     )
 
     try:
-        await bot.send_animation(chat_id, animation=get_gif("night"), caption="🌙 Ночь наступает...")
+        await bot.send_animation(chat_id, animation=get_gif("night"), caption="Night is falling...")
     except TelegramBadRequest:
-        await bot.send_message(chat_id, "🌙 Ночь наступает...")
+        await bot.send_message(chat_id, "Night is falling...")
 
     await mute_chat(chat_id, True)
 
     for uid, ps in game.players.items():
         role_text = format_role_reveal(ps.role.name)
+        role_text = role_text.replace("**", "")
         try:
-            await bot.send_message(uid, role_text, parse_mode=ParseMode.MARKDOWN)
+            await bot.send_message(uid, role_text)
         except Exception as e:
             logger.error(f"Could not send role to {uid}: {e}")
 
@@ -355,19 +351,18 @@ async def night_timer(game: Game):
             row = []
     if row:
         buttons.append(row)
-    buttons.append([InlineKeyboardButton(text="⏭️ Пропустить", callback_data="vote:none")])
+    buttons.append([InlineKeyboardButton(text="Skip", callback_data="vote:none")])
 
     markup = InlineKeyboardMarkup(inline_keyboard=buttons)
+    alive_list = "\n".join(f"  {get_role_emoji(ps.role.name)} {ps.display_name}" for uid, ps in alive_players.items())
     await bot.send_message(
         game.chat_id,
-        f"☀️ **ДЕНЬ {game.day_number}**\n\n"
-        f"Обсуждайте и голосуйте!\n"
-        f"Голосование за казнь:\n"
-        f"⏰ Голоса в течение {VOTE_TIMEOUT} секунд.\n\n"
-        f"Живые игроки:\n" +
-        "\n".join(f"  {get_role_emoji(ps.role.name)} {ps.display_name}" for uid, ps in alive_players.items()),
+        f"<b>DAY {game.day_number}</b>\n\n"
+        f"Discuss and vote!\n"
+        f"Voting for execution:\n"
+        f"Time: {VOTE_TIMEOUT} seconds.\n\n"
+        f"Alive players:\n{alive_list}",
         reply_markup=markup,
-        parse_mode=ParseMode.MARKDOWN,
     )
 
     asyncio.create_task(day_timer(game))
@@ -389,24 +384,21 @@ async def resolve_day(game: Game):
                 game.chat_id,
                 animation=get_gif("lynch"),
                 caption=(
-                    f"⚖️ **КАЗНЬ**\n\n"
-                    f"{ps.display_name} был казнён!\n"
-                    f"Его роль: {get_role_emoji(role.name)} {get_role_name(role.name)}"
+                    f"<b>EXECUTION</b>\n\n"
+                    f"{ps.display_name} was executed!\n"
+                    f"Role: {get_role_emoji(role.name)} {get_role_name(role.name)}"
                 ),
-                parse_mode=ParseMode.MARKDOWN,
             )
         except TelegramBadRequest:
             await bot.send_message(
                 game.chat_id,
-                f"⚖️ **КАЗНЬ**\n\n{ps.display_name} был казнён!\n"
-                f"Его роль: {get_role_emoji(role.name)} {get_role_name(role.name)}",
-                parse_mode=ParseMode.MARKDOWN,
+                f"<b>EXECUTION</b>\n\n{ps.display_name} was executed!\n"
+                f"Role: {get_role_emoji(role.name)} {get_role_name(role.name)}",
             )
     else:
         await bot.send_message(
             game.chat_id,
-            "⚖️ Никто не был казнён (нет большинства).",
-            parse_mode=ParseMode.MARKDOWN,
+            "Nobody was executed (no majority).",
         )
 
     winner = game.check_winner()
@@ -424,15 +416,16 @@ async def end_game(game: Game, winner: str):
     await mute_chat(game.chat_id, False)
 
     if winner == "mafia":
-        title = "🔪 **МАФИЯ ПОБЕДИЛА!**"
+        title = "MAFIA WINS!"
         gif = get_gif("victory_mafia")
     else:
-        title = "☀️ **МИРНЫЕ ПОБЕДИЛИ!**"
+        title = "TOWN WINS!"
         gif = get_gif("victory_town")
 
     role_summary = format_role_list_summary(game.players)
-    await bot.send_message(game.chat_id, title, parse_mode=ParseMode.MARKDOWN)
-    await bot.send_animation(game.chat_id, animation=gif, caption=role_summary, parse_mode=ParseMode.MARKDOWN)
+    role_summary = role_summary.replace("**", "")
+    await bot.send_message(game.chat_id, f"<b>{title}</b>")
+    await bot.send_animation(game.chat_id, animation=gif, caption=role_summary)
 
     for uid, ps in game.players.items():
         won = (winner == "mafia" and ps.role.team == "mafia") or \
@@ -452,47 +445,45 @@ async def cb_target(callback: CallbackQuery):
     target = data[1]
 
     if user_id not in user_game:
-        await callback.answer("Игра не найдена.", show_alert=True)
+        await callback.answer("Game not found.", show_alert=True)
         return
 
     game_id = user_game[user_id]
     game = games.get(game_id)
     if not game or game.phase != GamePhase.NIGHT:
-        await callback.answer("Сейчас не ночь.", show_alert=True)
+        await callback.answer("It is not night.", show_alert=True)
         return
 
     ps = game.players.get(user_id)
     if not ps or not ps.alive:
-        await callback.answer("Ты мёртв.", show_alert=True)
+        await callback.answer("You are dead.", show_alert=True)
         return
 
     role = ps.role
     if not role.can_act_at_night or role.acted:
-        await callback.answer("Ты уже فعل.", show_alert=True)
+        await callback.answer("Already acted.", show_alert=True)
         return
 
     if target == "none":
         role.acted = True
-        await callback.message.edit_text("⏭️ Действие пропущено.")
+        await callback.message.edit_text("Action skipped.")
         await callback.answer()
         return
 
     target_id = int(target)
     if target_id not in game.get_alive_players():
-        await callback.answer("Игрок недоступен.", show_alert=True)
+        await callback.answer("Player unavailable.", show_alert=True)
         return
 
     role.target = target_id
     role.acted = True
 
     if isinstance(role, Merchant):
-        # Handle merchant action
         pass
     elif isinstance(role, Bartender):
-        # Handle bartender swap
         pass
 
-    await callback.message.edit_text(f"✅ Выбрано: {game.players[target_id].display_name}")
+    await callback.message.edit_text(f"Selected: {game.players[target_id].display_name}")
     await callback.answer()
 
 
@@ -503,32 +494,32 @@ async def cb_vote(callback: CallbackQuery):
     target = data[1]
 
     if user_id not in user_game:
-        await callback.answer("Игра не найдена.", show_alert=True)
+        await callback.answer("Game not found.", show_alert=True)
         return
 
     game_id = user_game[user_id]
     game = games.get(game_id)
     if not game or game.phase != GamePhase.DAY_VOTE:
-        await callback.answer("Сейчас не день.", show_alert=True)
+        await callback.answer("It is not day.", show_alert=True)
         return
 
     ps = game.players.get(user_id)
     if not ps or not ps.alive:
-        await callback.answer("Ты мёртв.", show_alert=True)
+        await callback.answer("You are dead.", show_alert=True)
         return
 
     if target == "none":
-        await callback.message.edit_text("⏭️ Голос пропущен.")
+        await callback.message.edit_text("Vote skipped.")
         await callback.answer()
         return
 
     target_id = int(target)
     if target_id not in game.get_alive_players():
-        await callback.answer("Игрок недоступен.", show_alert=True)
+        await callback.answer("Player unavailable.", show_alert=True)
         return
 
     if game.cast_vote(user_id, target_id):
-        await callback.message.edit_text(f"✅ Голос за {game.players[target_id].display_name}")
+        await callback.message.edit_text(f"Voted for: {game.players[target_id].display_name}")
     await callback.answer()
 
 
@@ -537,7 +528,7 @@ async def cmd_profile(message: Message):
     user_id = message.from_user.id
     player = db.get_player(user_id)
     if not player:
-        db.save_player(user_id, message.from_user.first_name or "Игрок")
+        db.save_player(user_id, message.from_user.first_name or "Player")
         player = db.get_player(user_id)
 
     played = player.get("games_played", 0)
@@ -545,13 +536,13 @@ async def cmd_profile(message: Message):
     winrate = round(wins / played * 100, 1) if played > 0 else 0
 
     lines = [
-        f"👤 **Профиль: {player['name']}**\n",
-        f"🎮 Игр: {played}",
-        f"🏆 Побед: {wins}",
-        f"📊 Винрейт: {winrate}%",
-        f"💀 Смертей: {player.get('deaths', 0)}",
-        f"🔪 Убийств: {player.get('kills', 0)}",
-        "\n🎭 **Роли:**",
+        f"<b>Profile: {player['name']}</b>\n",
+        f"Games: {played}",
+        f"Wins: {wins}",
+        f"Winrate: {winrate}%",
+        f"Deaths: {player.get('deaths', 0)}",
+        f"Kills: {player.get('kills', 0)}",
+        "\n<b>Roles:</b>",
     ]
 
     role_stats = player.get("role_stats", {})
@@ -559,25 +550,25 @@ async def cmd_profile(message: Message):
         emoji = get_role_emoji(role_name)
         name = get_role_name(role_name)
         wr = round(stats["wins"] / stats["played"] * 100) if stats["played"] > 0 else 0
-        lines.append(f"  {emoji} {name}: {stats['played']} игр, {wr}% побед")
+        lines.append(f"  {emoji} {name}: {stats['played']} games, {wr}% wins")
 
-    await message.answer("\n".join(lines), parse_mode=ParseMode.MARKDOWN)
+    await message.answer("\n".join(lines))
 
 
 @router.message(Command("stats"))
 async def cmd_stats(message: Message):
     top = db.get_top_players(10)
     if not top:
-        await message.answer("📊 Пока нет статистики. Сыграйте первую игру!")
+        await message.answer("No stats yet. Play a game!")
         return
 
-    lines = ["🏆 **ТОП ИГРОКОВ**\n"]
-    medals = ["🥇", "🥈", "🥉"]
+    lines = ["<b>TOP PLAYERS</b>\n"]
+    medals = ["1st", "2nd", "3rd"]
     for i, p in enumerate(top):
         medal = medals[i] if i < 3 else f"  {i+1}."
-        lines.append(f"{medal} **{p['name']}** — {p['wins']} побед ({p['winrate']}%)")
+        lines.append(f"{medal} <b>{p['name']}</b> - {p['wins']} wins ({p['winrate']}%)")
 
-    await message.answer("\n".join(lines), parse_mode=ParseMode.MARKDOWN)
+    await message.answer("\n".join(lines))
 
 
 def setup():

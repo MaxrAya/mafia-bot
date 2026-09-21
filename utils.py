@@ -54,7 +54,7 @@ def shuffle_roles(player_count: int) -> list[str]:
 
 
 def format_lobby(player_ids: list[int], player_names: dict[int, str]) -> str:
-    lines = ["🎭 **ЛОББИ МАФИИ**\n"]
+    lines = ["<b>LOBBY</b>\n"]
     for i, uid in enumerate(player_ids, 1):
         name = player_names.get(uid, f"Игрок {uid}")
         lines.append(f"  {i}. {name}")
@@ -67,7 +67,7 @@ def format_role_reveal(role_name: str) -> str:
     name = get_role_name(role_name)
     from config import ROLE_DESCRIPTIONS
     desc = ROLE_DESCRIPTIONS.get(role_name, "")
-    return f"{emoji} **Твоя роль: {name}**\n\n{desc}"
+    return f"{emoji} <b>Your role: {name}</b>\n\n{desc}"
 
 
 def format_day_result(killed_ids: list[int], player_names: dict[int, str], killed_roles: dict[int, str]) -> str:
@@ -89,7 +89,7 @@ def format_role_list_summary(players: dict[int, object]) -> str:
     for p in players.values():
         if hasattr(p, "role"):
             role_counts[p.role.name] += 1
-    lines = ["🎭 **Состав комнаты:**\n"]
+    lines = ["<b>Roles:</b>\n"]
     for role, count in role_counts.most_common():
         emoji = get_role_emoji(role)
         name = get_role_name(role)
