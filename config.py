@@ -1,8 +1,9 @@
 from dataclasses import dataclass, field
 from typing import Dict, Tuple
+import os
 
 
-BOT_TOKEN = "8932238138:AAFft7yyM-cfKAn-PqfKysyPN169UgrmU_Y"
+BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 
 # GIF URLs для атмосферы
 GIFS = {
