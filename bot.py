@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import random
 from typing import Optional
 
 from aiogram import Bot, Dispatcher, F, Router
