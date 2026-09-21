@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from typing import Dict, Tuple
 
 
-BOT_TOKEN = "YOUR_BOT_TOKEN_HERE"
+BOT_TOKEN = "8932238138:AAFft7yyM-cfKAn-PqfKysyPN169UgrmU_Y"
 
 # GIF URLs для атмосферы
 GIFS = {
