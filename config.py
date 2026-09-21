@@ -4,6 +4,8 @@ import os
 
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
+if not BOT_TOKEN:
+    print("WARNING: BOT_TOKEN not set! Set it in Railway → Variables")
 
 # GIF URLs для атмосферы
 GIFS = {
